@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Plane, Menu, X, LogOut, User, Key } from 'lucide-react'
+import { Plane, Menu, X, LogOut, User, Key, ExternalLink } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
@@ -16,9 +16,14 @@ function Header() {
     }, [])
 
     const saveKey = () => {
-        localStorage.setItem('openrouter_key', apiKey)
+        if (!apiKey.trim().startsWith('sk-or-')) {
+            alert("Invalid OpenRouter Key. It must start with 'sk-or-'.")
+            return
+        }
+        localStorage.setItem('openrouter_key', apiKey.trim())
         setShowKeyInput(false)
-        alert('API Key saved!')
+        alert('API Key saved successfully!')
+        window.location.reload() // Reload to ensure services pick up the new key
     }
 
     return (
@@ -58,31 +63,40 @@ function Header() {
                             <button
                                 onClick={() => setShowKeyInput(!showKeyInput)}
                                 className={`p-2 rounded-full transition-colors ${apiKey ? 'text-green-400 hover:bg-green-400/10' : 'text-gray-300 hover:text-orange-500'}`}
-                                title="Set API Key"
+                                title="Set OpenRouter API Key"
                             >
                                 <Key className="w-5 h-5" />
                             </button>
 
                             {/* API Key Dropdown */}
                             {showKeyInput && (
-                                <div className="absolute top-12 right-0 w-72 glass p-4 rounded-xl border border-white/10 shadow-xl">
+                                <div className="absolute top-12 right-0 w-80 glass p-5 rounded-xl border border-white/10 shadow-xl z-50">
                                     <h3 className="text-white text-sm font-semibold mb-2">OpenRouter API Key</h3>
+                                    <p className="text-[10px] text-gray-400 mb-3 leading-relaxed">
+                                        Required for the AI features. Free keys available.
+                                    </p>
                                     <input
                                         type="password"
                                         value={apiKey}
                                         onChange={(e) => setApiKey(e.target.value)}
                                         placeholder="sk-or-..."
-                                        className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm mb-3 focus:outline-none focus:border-orange-500"
+                                        className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm mb-3 focus:outline-none focus:border-orange-500 font-mono"
                                     />
                                     <button
                                         onClick={saveKey}
-                                        className="w-full btn-primary py-2 rounded-lg text-white text-xs font-semibold"
+                                        className="w-full btn-primary py-2 rounded-lg text-white text-xs font-semibold mb-3"
                                     >
-                                        Save Key
+                                        Save & Reload
                                     </button>
-                                    <p className="text-[10px] text-gray-500 mt-2 text-center">
-                                        Get a free key from <a href="https://openrouter.ai" target="_blank" className="text-orange-500 underline">openrouter.ai</a>
-                                    </p>
+                                    <a
+                                        href="https://openrouter.ai/keys"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-center gap-1 text-[11px] text-orange-500 hover:text-orange-400"
+                                    >
+                                        <span>Get Free Key</span>
+                                        <ExternalLink className="w-3 h-3" />
+                                    </a>
                                 </div>
                             )}
                         </div>
@@ -133,19 +147,28 @@ function Header() {
                     <div className="md:hidden py-4 border-t border-white/10">
                         <nav className="flex flex-col gap-4">
                             <div className="px-2">
+                                <p className="text-xs text-gray-400 mb-2">OpenRouter API Key</p>
                                 <input
                                     type="password"
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder="Paste API Key here..."
-                                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm mb-2 focus:outline-none focus:border-orange-500"
+                                    placeholder="sk-or-..."
+                                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm mb-2 focus:outline-none focus:border-orange-500 font-mono"
                                 />
                                 <button
                                     onClick={() => { saveKey(); setMobileMenuOpen(false); }}
                                     className="w-full py-2 bg-white/5 rounded-lg text-white text-xs font-semibold hover:bg-white/10"
                                 >
-                                    Save API Key
+                                    Save & Reload
                                 </button>
+                                <a
+                                    href="https://openrouter.ai/keys"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block text-center mt-2 text-[10px] text-orange-500"
+                                >
+                                    Get Free Key
+                                </a>
                             </div>
 
                             <div className="h-px bg-white/10 my-1"></div>

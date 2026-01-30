@@ -1,22 +1,56 @@
-// OpenRouter API - Direct fetch implementation to avoid SDK issues
+// OpenRouter API Service - Dedicated to OpenRouter with Model Fallback
+// Documentation: https://openrouter.ai/docs/api-reference
+
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+// List of free models to try in order
+// Sometimes specific models have rate limits or downtime, so we fallback
+const MODELS = [
+    "google/gemini-2.0-flash-exp:free", // Often most reliable/fastest
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "tngtech/deepseek-r1t2-chimera:free",
+    "google/gemma-2-9b-it:free"
+]
+
 export const generateTripPlan = async (prompt, userKey) => {
-    // Use environment variable first (for local dev), then custom key
-    // TRIM the key to remove accidental whitespace from copy-pasting
-    const apiKey = (import.meta.env.VITE_OPENROUTER_API_KEY || userKey || "").trim()
+    // 1. Get API Key & Clean it
+    const envKey = import.meta.env.VITE_OPENROUTER_API_KEY
+    let apiKey = (envKey || userKey || "").trim()
 
     if (!apiKey) {
         throw new Error("API Key is missing. Please click the key icon in the header and enter your OpenRouter API Key.")
     }
 
-    // Validate key format (basic check)
+    // 2. Client-side Validation
     if (!apiKey.startsWith('sk-or-')) {
-        console.warn("Key does not start with sk-or-, it might be invalid:", apiKey.substring(0, 5) + "...")
+        console.error("Invalid key format detected:", apiKey.substring(0, 8) + "...")
+        throw new Error(`Invalid Key Format. OpenRouter keys must start with 'sk-or-'. You provided: ${apiKey.substring(0, 5)}...`)
     }
 
+    // 3. Try models in sequence until one works
+    let lastError = null
+
+    for (const model of MODELS) {
+        try {
+            console.log(`Trying model: ${model}...`)
+            return await makeRequest(apiKey, model, prompt)
+        } catch (error) {
+            console.warn(`Failed with model ${model}:`, error)
+            lastError = error
+
+            // If it's an Auth error (401), stopping trying other models - the key is wrong
+            if (error.message.includes('401') || error.message.includes('Authentication')) {
+                throw error
+            }
+        }
+    }
+
+    throw lastError || new Error("All models failed to generate a response. Please check your network or try again later.")
+}
+
+const makeRequest = async (apiKey, model, prompt) => {
     const requestBody = {
-        model: "tngtech/deepseek-r1t2-chimera:free", // Free model
+        model: model,
         messages: [
             {
                 role: "user",
@@ -24,77 +58,73 @@ export const generateTripPlan = async (prompt, userKey) => {
             }
         ],
         temperature: 0.8,
-        max_tokens: 4096
+        max_tokens: 4096,
+        // Add extra parameters that might help with free tier stability
+        top_p: 0.9,
+        repetition_penalty: 1.1
     }
 
     try {
-        console.log("Calling OpenRouter API via fetch...")
-
         const response = await fetch(OPENROUTER_API_URL, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': window.location.origin, // Required for OpenRouter rankings
-                'X-Title': 'AI Trip Planner'
+                'HTTP-Referer': window.location.href, // Use exact current URL
+                'X-Title': 'AI Trip Planner',
             },
             body: JSON.stringify(requestBody)
         })
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
-            console.error("API Error Response:", errorData)
+            console.error(`API Error (${model}):`, errorData)
 
+            // Specific Error Handling
             if (response.status === 401) {
-                throw new Error(`Authentication failed (401). Please check your API Key. Ensure it starts with 'sk-or-'.`)
+                throw new Error(`Authentication Failed (401). OpenRouter rejected the key. \nTip: Ensure you have no extra spaces and the key is 'active' on openrouter.ai/keys.`)
             }
             if (response.status === 402) {
-                throw new Error("Insufficient credits. Although this model is free, verify your OpenRouter account status.")
+                throw new Error("Insufficient Credits. Even for free models, some accounts might need a minimal credit set up.")
+            }
+            if (response.status === 429) {
+                throw new Error("Rate Limit Exceeded. OpenRouter free tier is busy. Retrying with next model...")
             }
 
-            throw new Error(errorData.error?.message || `API Error: ${response.status} ${response.statusText}`)
+            throw new Error(errorData.error?.message || `API Error: ${response.status}`)
         }
 
         const data = await response.json()
-        console.log("API Response received successfully!")
 
         const text = data.choices?.[0]?.message?.content
         if (!text) {
             throw new Error("Empty response from AI")
         }
 
-        // Parse JSON logic
-        let cleanedResponse = text.trim()
-
-        const jsonStartIndex = cleanedResponse.indexOf('{')
-        if (jsonStartIndex > 0) {
-            cleanedResponse = cleanedResponse.substring(jsonStartIndex)
-        }
-
-        if (cleanedResponse.startsWith("```json")) {
-            cleanedResponse = cleanedResponse.slice(7)
-        } else if (cleanedResponse.startsWith("```")) {
-            cleanedResponse = cleanedResponse.slice(3)
-        }
-        if (cleanedResponse.endsWith("```")) {
-            cleanedResponse = cleanedResponse.slice(0, -3)
-        }
-        cleanedResponse = cleanedResponse.trim()
-
-        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-            cleanedResponse = jsonMatch[0]
-        }
-
-        return JSON.parse(cleanedResponse)
+        // Clean and Parse JSON
+        return parseJsonLike(text)
 
     } catch (error) {
-        console.error("Error generating trip:", error)
-        throw error
+        throw error // Pass up to the loop
     }
 }
 
-export const isApiConfigured = () => {
-    // We don't rely only on the env var anymore
-    return true
+const parseJsonLike = (text) => {
+    let clean = text.trim()
+    const start = clean.indexOf('{')
+    const end = clean.lastIndexOf('}')
+
+    if (start !== -1 && end !== -1) {
+        clean = clean.substring(start, end + 1)
+    }
+
+    // Remove markdown code blocks if present
+    clean = clean.replace(/```json/g, '').replace(/```/g, '')
+
+    try {
+        return JSON.parse(clean)
+    } catch (e) {
+        console.error("JSON Parse Error. Raw text:", text)
+        throw new Error("AI generated text that couldn't be parsed as JSON. Please try again.")
+    }
 }
