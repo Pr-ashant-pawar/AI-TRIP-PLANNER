@@ -7,7 +7,11 @@ const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || "sk-or-v1-1f3d0d5091ad
 const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: apiKey,
-    dangerouslyAllowBrowser: true // Required for browser usage
+    dangerouslyAllowBrowser: true, // Required for browser usage
+    defaultHeaders: {
+        "HTTP-Referer": window.location.origin, // Required for OpenRouter rankings
+        "X-Title": "AI Trip Planner", // Optional
+    }
 })
 
 export const generateTripPlan = async (prompt) => {
@@ -18,6 +22,7 @@ export const generateTripPlan = async (prompt) => {
     try {
         console.log("Calling OpenRouter API...")
 
+        // Explicitly enabling browser usage for client-side app
         const completion = await openai.chat.completions.create({
             model: "tngtech/deepseek-r1t2-chimera:free", // Free model
             messages: [
@@ -27,7 +32,12 @@ export const generateTripPlan = async (prompt) => {
                 }
             ],
             temperature: 0.8,
-            max_tokens: 4096
+            max_tokens: 4096,
+            // Adding headers explicitly to the request config as well just in case
+            headers: {
+                "HTTP-Referer": "https://pr-ashant-pawar.github.io/AI-TRIP-PLANNER",
+                "X-Title": "AI Trip Planner"
+            }
         })
 
         const text = completion.choices[0]?.message?.content
@@ -68,10 +78,17 @@ export const generateTripPlan = async (prompt) => {
 
     } catch (error) {
         console.error("Error generating trip:", error)
+        console.error("Error Details:", error.response?.data || error.message)
 
         if (error.message?.includes('JSON')) {
             throw new Error("AI response was not valid JSON. Please try again.")
         }
+
+        // Explicitly handle 401
+        if (error.status === 401) {
+            throw new Error("API Authentication failed. Please check your API key.")
+        }
+
         throw error
     }
 }
