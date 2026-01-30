@@ -1,0 +1,141 @@
+import { Link } from 'react-router-dom'
+import { Plane, Menu, X, LogOut, User } from 'lucide-react'
+import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+
+function Header() {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const { user, logout, isAuthenticated } = useAuth()
+
+    return (
+        <header className="fixed top-0 left-0 right-0 z-50 glass">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    {/* Logo */}
+                    <Link to="/" className="flex items-center gap-2 group">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Plane className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-xl font-bold text-white hidden sm:block">
+                            India<span className="text-orange-500">Trip</span>
+                        </span>
+                    </Link>
+
+                    {/* Desktop Navigation */}
+                    <nav className="hidden md:flex items-center gap-8">
+                        <Link
+                            to="/"
+                            className="text-gray-300 hover:text-orange-500 transition-colors font-medium"
+                        >
+                            Home
+                        </Link>
+                        <Link
+                            to="/create-trip"
+                            className="text-gray-300 hover:text-orange-500 transition-colors font-medium"
+                        >
+                            Plan Trip
+                        </Link>
+                    </nav>
+
+                    {/* Auth Buttons */}
+                    <div className="hidden md:flex items-center gap-3">
+                        {isAuthenticated ? (
+                            <>
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5">
+                                    <User className="w-4 h-4 text-orange-500" />
+                                    <span className="text-white text-sm">{user?.name}</span>
+                                </div>
+                                <button
+                                    onClick={logout}
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-full text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    <span className="text-sm">Logout</span>
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    to="/login"
+                                    className="px-4 py-2.5 rounded-full text-gray-300 hover:text-white transition-colors font-medium text-sm"
+                                >
+                                    Sign In
+                                </Link>
+                                <Link
+                                    to="/signup"
+                                    className="btn-primary px-6 py-2.5 rounded-full text-white font-semibold text-sm"
+                                >
+                                    Get Started
+                                </Link>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        className="md:hidden text-white p-2"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    >
+                        {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                    </button>
+                </div>
+
+                {/* Mobile Menu */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden py-4 border-t border-white/10">
+                        <nav className="flex flex-col gap-4">
+                            <Link
+                                to="/"
+                                className="text-gray-300 hover:text-orange-500 transition-colors font-medium"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Home
+                            </Link>
+                            <Link
+                                to="/create-trip"
+                                className="text-gray-300 hover:text-orange-500 transition-colors font-medium"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Plan Trip
+                            </Link>
+
+                            {isAuthenticated ? (
+                                <>
+                                    <div className="flex items-center gap-2 text-white">
+                                        <User className="w-4 h-4 text-orange-500" />
+                                        <span>{user?.name}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => { logout(); setMobileMenuOpen(false); }}
+                                        className="text-gray-300 hover:text-white text-left"
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/login"
+                                        className="text-gray-300 hover:text-orange-500 transition-colors font-medium"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                        Sign In
+                                    </Link>
+                                    <Link
+                                        to="/signup"
+                                        className="btn-primary px-6 py-2.5 rounded-full text-white font-semibold text-sm text-center"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                        Get Started
+                                    </Link>
+                                </>
+                            )}
+                        </nav>
+                    </div>
+                )}
+            </div>
+        </header>
+    )
+}
+
+export default Header
