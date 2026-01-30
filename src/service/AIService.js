@@ -1,24 +1,25 @@
 // OpenRouter API - No rate limits on free models!
 import OpenAI from 'openai'
 
-const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY
+// Use environment variable if available, otherwise use hardcoded key for GitHub Pages demo
+const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || "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"
 
-const openai = apiKey ? new OpenAI({
+const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: apiKey,
     dangerouslyAllowBrowser: true // Required for browser usage
-}) : null
+})
 
 export const generateTripPlan = async (prompt) => {
-    if (!openai) {
-        throw new Error("API key not configured. Please add VITE_OPENROUTER_API_KEY to your .env file.")
+    if (!apiKey) {
+        throw new Error("API key not configured.")
     }
 
     try {
         console.log("Calling OpenRouter API...")
 
         const completion = await openai.chat.completions.create({
-            model: "tngtech/deepseek-r1t2-chimera:free", // Free model from user's example
+            model: "tngtech/deepseek-r1t2-chimera:free", // Free model
             messages: [
                 {
                     role: "user",
