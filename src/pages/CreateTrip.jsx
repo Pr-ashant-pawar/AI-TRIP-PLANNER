@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, Calendar, Users, Wallet, Sparkles, AlertCircle, Loader2 } from 'lucide-react'
 import { DESTINATIONS, TRAVELERS, BUDGETS, AI_PROMPT } from '../constants/options'
-import { generateTripPlan, isApiConfigured } from '../service/AIService'
+import { generateTripPlan } from '../service/AIService'
 
 function CreateTrip() {
     const navigate = useNavigate()
@@ -48,10 +48,14 @@ function CreateTrip() {
     }
 
     const handleGenerateTrip = async () => {
-        if (!isApiConfigured()) {
-            setError('API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.')
-            return
-        }
+        // Check for API key in localStorage
+        const storedKey = localStorage.getItem('openrouter_key')
+
+        // Also check env var (for local dev) logic moved to service
+        // if (!storedKey && !import.meta.env.VITE_OPENROUTER_API_KEY) {
+        //   setError('Please click the key icon in the header and enter your OpenRouter API Key first.')
+        //   return
+        // }
 
         setLoading(true)
         setError(null)
@@ -70,7 +74,8 @@ function CreateTrip() {
             .replace('{budget}', budgetInfo.title)
 
         try {
-            const tripPlan = await generateTripPlan(prompt)
+            // Pass the user's stored key to the service
+            const tripPlan = await generateTripPlan(prompt, storedKey)
 
             // Store the trip plan in localStorage
             localStorage.setItem('currentTrip', JSON.stringify({

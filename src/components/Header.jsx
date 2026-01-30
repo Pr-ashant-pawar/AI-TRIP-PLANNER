@@ -1,11 +1,25 @@
 import { Link } from 'react-router-dom'
-import { Plane, Menu, X, LogOut, User } from 'lucide-react'
-import { useState } from 'react'
+import { Plane, Menu, X, LogOut, User, Key } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 function Header() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const { user, logout, isAuthenticated } = useAuth()
+    const [apiKey, setApiKey] = useState('')
+    const [showKeyInput, setShowKeyInput] = useState(false)
+
+    // Load key from localStorage on mount
+    useEffect(() => {
+        const storedKey = localStorage.getItem('openrouter_key')
+        if (storedKey) setApiKey(storedKey)
+    }, [])
+
+    const saveKey = () => {
+        localStorage.setItem('openrouter_key', apiKey)
+        setShowKeyInput(false)
+        alert('API Key saved!')
+    }
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 glass">
@@ -37,8 +51,42 @@ function Header() {
                         </Link>
                     </nav>
 
-                    {/* Auth Buttons */}
+                    {/* Right Side Actions */}
                     <div className="hidden md:flex items-center gap-3">
+                        {/* API Key Button */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowKeyInput(!showKeyInput)}
+                                className={`p-2 rounded-full transition-colors ${apiKey ? 'text-green-400 hover:bg-green-400/10' : 'text-gray-300 hover:text-orange-500'}`}
+                                title="Set API Key"
+                            >
+                                <Key className="w-5 h-5" />
+                            </button>
+
+                            {/* API Key Dropdown */}
+                            {showKeyInput && (
+                                <div className="absolute top-12 right-0 w-72 glass p-4 rounded-xl border border-white/10 shadow-xl">
+                                    <h3 className="text-white text-sm font-semibold mb-2">OpenRouter API Key</h3>
+                                    <input
+                                        type="password"
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder="sk-or-..."
+                                        className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm mb-3 focus:outline-none focus:border-orange-500"
+                                    />
+                                    <button
+                                        onClick={saveKey}
+                                        className="w-full btn-primary py-2 rounded-lg text-white text-xs font-semibold"
+                                    >
+                                        Save Key
+                                    </button>
+                                    <p className="text-[10px] text-gray-500 mt-2 text-center">
+                                        Get a free key from <a href="https://openrouter.ai" target="_blank" className="text-orange-500 underline">openrouter.ai</a>
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
                         {isAuthenticated ? (
                             <>
                                 <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5">
@@ -84,6 +132,24 @@ function Header() {
                 {mobileMenuOpen && (
                     <div className="md:hidden py-4 border-t border-white/10">
                         <nav className="flex flex-col gap-4">
+                            <div className="px-2">
+                                <input
+                                    type="password"
+                                    value={apiKey}
+                                    onChange={(e) => setApiKey(e.target.value)}
+                                    placeholder="Paste API Key here..."
+                                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm mb-2 focus:outline-none focus:border-orange-500"
+                                />
+                                <button
+                                    onClick={() => { saveKey(); setMobileMenuOpen(false); }}
+                                    className="w-full py-2 bg-white/5 rounded-lg text-white text-xs font-semibold hover:bg-white/10"
+                                >
+                                    Save API Key
+                                </button>
+                            </div>
+
+                            <div className="h-px bg-white/10 my-1"></div>
+
                             <Link
                                 to="/"
                                 className="text-gray-300 hover:text-orange-500 transition-colors font-medium"
